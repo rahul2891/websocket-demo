@@ -10,6 +10,12 @@
     <script>
         const {port} = window.location;
         const connection = new WebSocket(`ws://localhost:${port}`)
+        connection.onopen = () => {
+            connection.send('Hello Server!');
+            connection.onmessage = (event) => {
+                console.log('Message from server ', event.data);
+            };
+        }
     </script>
 </body>
 </html>
