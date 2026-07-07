@@ -18,9 +18,14 @@ wsServer.on("connection", (socket) => {
   console.log("WebSocket connection...");
 
   socket.on("message", (message) => {
-    console.log(`Received message: ${message}`);
+    console.log(`Websocket message received: ${message.toString()}`);
 
-    socket.send(`Server received: ${message}`);
+
+    wsServer.clients.forEach((client) => {
+      if (client !== socket && client.readyState === 1) {
+        client.send(message.toString());
+      }
+    });
   });
 
   socket.on("close", () => {
