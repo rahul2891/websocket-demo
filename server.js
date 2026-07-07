@@ -2,7 +2,8 @@ import http from "http";
 import fs from "fs/promises";
 import path from "path";
 
-import { WebSocketServer} from "ws";
+import { WebSocketServer } from "ws";
+import { redisPublisher, redisSubscriber } from "./connection.js";
 
 const PORT = process.env.PORT ?? 9000;
 
@@ -12,7 +13,19 @@ const httpServer = http.createServer(async function(req, res){
     return res.end(indexFile);
 })
 
+const REDIS_CHANNEL = "chat";
+
 const wsServer = new WebSocketServer({ server: httpServer });
+
+redisSubscriber.subscribe(REDIS_CHANNEL);
+
+redisSubscriber.on("message", (channel, message) => {
+  if(channel === REDIS_CHANNEL) {
+    wsServer.clients.forEach((client) => {
+      client.send(message.toString());
+    })
+  }
+});
 
 wsServer.on("connection", (socket) => {
   console.log("WebSocket connection...");
@@ -21,11 +34,14 @@ wsServer.on("connection", (socket) => {
     console.log(`Websocket message received: ${message.toString()}`);
 
 
-    wsServer.clients.forEach((client) => {
-      if (client !== socket && client.readyState === 1) {
-        client.send(message.toString());
-      }
-    });
+    // wsServer.clients.forEach((client) => {
+    //   if (client !== socket && client.readyState === 1) {
+    //     client.send(message.toString());
+    //   }
+    // });
+    // Relay the message to Redis
+    console.log("Publishing message to Redis...");
+    redisPublisher.publish(REDIS_CHANNEL, message.toString());
   });
 
   socket.on("close", () => {
